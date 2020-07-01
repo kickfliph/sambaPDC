@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "10.99.0.1     DC1.samba.example.com     DC1" >> /etc/hosts
+echo "10.0.2.15     DC1.samba.example.com     DC1" >> /etc/hosts
 smbd -b | grep "CONFIGFILE"
 smbd -b | egrep "LOCKDIR|STATEDIR|CACHEDIR|PRIVATE_DIR"
 rm /etc/krb5.conf
@@ -37,16 +37,22 @@ Supported distributions are Ubuntu, Debian, CentOS, and Fedora."
 	exit
 fi
 
-samba-tool domain provision --server-role=dc --use-rfc2307 --dns-backend=SAMBA_INTERNAL --realm=samba.example.com --domain=samba --adminpass=1234567890$
-smbpasswd -a hluzardo
-smbpasswd -e hluzardo
+samba-tool domain provision --server-role=dc --use-rfc2307 --dns-backend=SAMBA_INTERNAL --realm=samba.example.com --domain=samba --adminpass=1234567890!
+
 echo search samba.example.com  >> /etc/resolv.conf 
-echo nameserver 10.99.0.1  >> /etc/resolv.conf
-samba-tool dns zonecreate DC1.samba.example.com 0.99.10.in-addr.arpa
-cp /usr/local/samba/private/krb5.conf /etc/krb5.conf
-systemctl start samba
+echo nameserver 10.0.2.15  >> /etc/resolv.conf
+samba-tool dns zonecreate DC1.samba.example.com 2.0.10.in-addr.arpa
+cp /var/lib/samba/private/krb5.conf /etc/
+systemctl stop smbd nmbd winbind
+systemctl disable smbd nmbd winbind
+systemctl unmask samba-ad-dc
+systemctl start samba-ad-dc
+systemctl enable samba-ad-dc
 smbclient -L localhost -U%
 smbclient //localhost/netlogon -UAdministrator -c 'ls'
+samba-tool domain level show
+samba-tool user create hluzardo
+
 host -t SRV _ldap._tcp.samba.example.com.
 host -t SRV _kerberos._udp.samba.example.com.
 host -t A dc1.samba.example.com.
